@@ -90,7 +90,7 @@ class BackupList(_BackupList):
 
     def _backup_list(self, prefix):
         bucket = get_bucket(self.conn, self.layout.store_name())
-        return bucket.list(prefix=prefix)
+        return bucket.list(prefix=prefix, delimiter="/")
 
 
 class DeleteFromContext(_DeleteFromContext):
