@@ -13,6 +13,7 @@ from wal_e import tar_partition
 from wal_e.exception import UserException, UserCritical
 from wal_e.worker import (WalSegment,
                           WalUploader,
+                          WalDualUploader,
                           PgBackupStatements,
                           PgControlDataParser,
                           PartitionUploader,
@@ -258,7 +259,7 @@ class Backup(object):
         # in archive_status.
         xlog_dir = os.path.dirname(wal_path)
         segment = WalSegment(wal_path, explicit=True)
-        uploader = WalUploader(self.layout, self.creds, self.gpg_key_id)
+        uploader = WalDualUploader(self.layout, self.creds, self.gpg_key_id)
         group = WalTransferGroup(uploader)
         group.start(segment)
 

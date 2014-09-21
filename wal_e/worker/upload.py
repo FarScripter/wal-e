@@ -1,6 +1,9 @@
 import socket
 import tempfile
 import time
+import threading
+import subprocess
+import errno
 
 import boto.exception
 
@@ -24,36 +27,86 @@ class WalUploader(object):
         self.blobstore = get_blobstore(layout)
 
     def __call__(self, segment):
-        # TODO :: Move arbitray path construction to StorageLayout Object
-        url = '{0}/wal_{1}/{2}.lzo'.format(self.layout.prefix.rstrip('/'),
-                                           storage.CURRENT_VERSION,
-                                           segment.name)
+        return upload_to_blobstore(segment)
 
-        logger.info(msg='begin archiving a file',
-                    detail=('Uploading "{wal_path}" to "{url}".'
-                            .format(wal_path=segment.path, url=url)),
-                    structured={'action': 'push-wal',
-                                'key': url,
-                                'seg': segment.name,
-                                'prefix': self.layout.path_prefix,
-                                'state': 'begin'})
 
-        # Upload and record the rate at which it happened.
-        kib_per_second = do_lzop_put(self.creds, url, segment.path,
-                                     self.gpg_key_id)
+def upload_to_blobstore(self, segment):
+    # TODO :: Move arbitray path construction to StorageLayout Object
+    url = '{0}/wal_{1}/{2}.lzo'.format(self.layout.prefix.rstrip('/'),
+                                       storage.CURRENT_VERSION,
+                                       segment.name)
 
-        logger.info(msg='completed archiving to a file ',
-                    detail=('Archiving to "{url}" complete at '
-                            '{kib_per_second}KiB/s. '
-                            .format(url=url, kib_per_second=kib_per_second)),
-                    structured={'action': 'push-wal',
-                                'key': url,
-                                'rate': kib_per_second,
-                                'seg': segment.name,
-                                'prefix': self.layout.path_prefix,
-                                'state': 'complete'})
+    logger.info(msg='begin archiving a file',
+                detail=('Uploading "{wal_path}" to "{url}".'
+                    .format(wal_path=segment.path, url=url)),
+                structured={'action': 'push-wal',
+                    'key': url,
+                    'seg': segment.name,
+                    'prefix': self.layout.path_prefix,
+                    'state': 'begin'})
 
+    # Upload and record the rate at which it happened.
+    kib_per_second = do_lzop_put(self.creds, url, segment.path,
+                self.gpg_key_id)
+
+    logger.info(msg='completed archiving to a file ',
+                detail=('Archiving to "{url}" complete at '
+                    '{kib_per_second}KiB/s. '
+                    .format(url=url, kib_per_second=kib_per_second)),
+                structured={'action': 'push-wal',
+                    'key': url,
+                    'rate': kib_per_second,
+                    'seg': segment.name,
+                    'prefix': self.layout.path_prefix,
+                    'state': 'complete'})
+
+    return segment
+
+
+class WalDualUploader(object):
+    def __init__(self, layout, creds, gpg_key_id):
+        self.layout = layout
+        self.creds = creds
+        self.gpg_key_id = gpg_key_id
+        self.blobstore = get_blobstore(layout)
+
+    def __call__(self, segment):
+        # upload to gluster in parallel
+        nfsThread = WalNfsThread(segment)
+        nfsThread.start()
+
+        success = False
+        try:
+            upload_to_blobstore(self, segment)
+            success = True
+        except Exception as e:
+            logger.error(msg='faild to upload {wal_path} to blobstore'
+                         .format(wal_path=segment.path))
+
+        # wait for the gluster thread
+        nfsThread.join()
+        if nfsThread.success is False:
+            logger.error(msg='failed to upload {wal_path} to gluster'
+                         .format(wal_path=segment.path))
+
+        # will make the segment to be done only when both of the uploads succeed.
+        segment.explicit = not (success & nfsThread.success)
+        logger.info(msg='push result {result} for file {wal_path}'.
+                    format(result= not segment.explicit, wal_path=segment.path))
         return segment
+
+
+class WalNfsThread(threading.Thread):
+    success = False
+    def __init__(self, segment):
+        threading.Thread.__init__(self)
+        self.segment = segment
+
+    def run(self):
+        return_code = subprocess.call(['/usr/local/bin/gluster_util', 'wal-push', self.segment.path])
+        # what should we do if the file exists?
+        if return_code == 0 or return_code == errno.EEXIST:
+            self.success = True
 
 
 class PartitionUploader(object):
