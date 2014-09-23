@@ -27,7 +27,7 @@ class WalUploader(object):
         self.blobstore = get_blobstore(layout)
 
     def __call__(self, segment):
-        return upload_to_blobstore(segment)
+        upload_to_blobstore(segment)
 
 
 def upload_to_blobstore(self, segment):
@@ -60,19 +60,15 @@ def upload_to_blobstore(self, segment):
                     'prefix': self.layout.path_prefix,
                     'state': 'complete'})
 
-    return segment
 
-
-class WalDualUploader(object):
-    def __init__(self, layout, creds, gpg_key_id):
-        self.layout = layout
-        self.creds = creds
-        self.gpg_key_id = gpg_key_id
-        self.blobstore = get_blobstore(layout)
+class WalDualUploader(WalUploader):
+    def __init__(self, layout, creds, gpg_key_id, push_function):
+        WalUploader.__init__(self, layout, creds, gpg_key_id)
+        self.push_function = push_function
 
     def __call__(self, segment):
         # upload to gluster in parallel
-        nfsThread = WalNfsThread(segment)
+        nfsThread = WalNfsThread(segment, self.push_function)
         nfsThread.start()
 
         success = False
@@ -98,12 +94,13 @@ class WalDualUploader(object):
 
 class WalNfsThread(threading.Thread):
     success = False
-    def __init__(self, segment):
+    def __init__(self, segment, push_function):
         threading.Thread.__init__(self)
         self.segment = segment
+        self.push_function = push_function
 
     def run(self):
-        return_code = subprocess.call(['/usr/local/bin/gluster_util', 'wal-push', self.segment.path])
+        return_code = self.push_function(self.segment.path)
         # what should we do if the file exists?
         if return_code == 0 or return_code == errno.EEXIST:
             self.success = True

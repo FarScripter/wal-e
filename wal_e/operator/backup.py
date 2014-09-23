@@ -20,7 +20,8 @@ from wal_e.worker import (WalSegment,
                           TarUploadPool,
                           WalTransferGroup,
                           uri_put_file,
-                          do_lzop_get)
+                          do_lzop_get,
+                          gluster_wal_push)
 
 
 # File mode on directories created during restore process
@@ -259,7 +260,13 @@ class Backup(object):
         # in archive_status.
         xlog_dir = os.path.dirname(wal_path)
         segment = WalSegment(wal_path, explicit=True)
-        uploader = WalDualUploader(self.layout, self.creds, self.gpg_key_id)
+
+        enable_code = os.getenv("GLUSTER_ENABLE")
+        uploader = None
+        if (enable_code == 0):
+            uploader = WalUploader(self.layout, self.creds, self.gpg_key_id)
+        else:
+            uploader = WalDualUploader(self.layout, self.creds, self.gpg_key_id, gluster_wal_push)
         group = WalTransferGroup(uploader)
         group.start(segment)
 
