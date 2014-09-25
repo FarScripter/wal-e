@@ -17,6 +17,7 @@ logger = log_help.WalELogger(__name__)
 # Yes, in the case the user *wanted* no timeouts, this would set one.
 # If that becomes a problem, someone should post a bug, although I am
 # having a hard time imagining why that behavior could ever be useful.
+socket.setdefaulttimeout(0.5)
 if not boto.config.has_option('Boto', 'http_socket_timeout'):
     if not boto.config.has_section('Boto'):
         boto.config.add_section('Boto')
