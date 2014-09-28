@@ -72,23 +72,31 @@ class WalDualUploader(WalUploader):
         nfsThread.start()
 
         success = False
+        ex = None
         try:
             upload_to_blobstore(self, segment)
             success = True
         except Exception as e:
-            logger.error(msg='faild to upload {wal_path} to blobstore'
+            ex = e
+            logger.error(msg='failed to upload {wal_path} to blobstore'
                          .format(wal_path=segment.path))
 
         # wait for the gluster thread
         nfsThread.join()
         if nfsThread.success is False:
-            logger.error(msg='failed to upload {wal_path} to gluster'
-                         .format(wal_path=segment.path))
+            error_msg = 'failed to upload {wal_path} to gluster'.format(wal_path=segment.path)
+            if ex is not None:
+                ex = Exception(error_msg)
+            logger.error(msg=error_msg)
 
         # will make the segment to be done only when both of the uploads succeed.
         segment.explicit = not (success & nfsThread.success)
         logger.info(msg='push result {result} for file {wal_path}'.
                     format(result= not segment.explicit, wal_path=segment.path))
+
+        if ex is not None:
+            raise ex
+
         return segment
 
 
