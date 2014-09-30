@@ -9,10 +9,11 @@ from wal_e.worker.upload_pool import TarUploadPool
 from wal_e.worker.worker_util import do_lzop_get
 from wal_e.worker.worker_util import do_lzop_put
 from wal_e.worker.worker_util import uri_put_file
-from wal_e.worker.gluster.gluster_worker import gluster_wal_push
+from wal_e.worker.gluster.gluster_worker import WalGlusterUploader
 
 __all__ = [
     'WalDualUploader',
+    'WalGlusterUploader',
     'PartitionUploader',
     'PgBackupStatements',
     'PgControlDataParser',
@@ -23,5 +24,4 @@ __all__ = [
     'do_lzop_get',
     'do_lzop_put',
     'uri_put_file',
-    'gluster_wal_push',
 ]

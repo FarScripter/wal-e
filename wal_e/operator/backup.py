@@ -14,14 +14,14 @@ from wal_e.exception import UserException, UserCritical
 from wal_e.worker import (WalSegment,
                           WalUploader,
                           WalDualUploader,
+                          WalGlusterUploader,
                           PgBackupStatements,
                           PgControlDataParser,
                           PartitionUploader,
                           TarUploadPool,
                           WalTransferGroup,
                           uri_put_file,
-                          do_lzop_get,
-                          gluster_wal_push)
+                          do_lzop_get)
 
 
 # File mode on directories created during restore process
@@ -266,7 +266,9 @@ class Backup(object):
         if (enable_code == 0):
             uploader = WalUploader(self.layout, self.creds, self.gpg_key_id)
         else:
-            uploader = WalDualUploader(self.layout, self.creds, self.gpg_key_id, gluster_wal_push)
+            blobstore_uploader = WalUploader(self.layout, self.creds, self.gpg_key_id)
+            gluster_uploader = WalGlusterUploader()
+            uploader = WalDualUploader(blobstore_uploader, gluster_uploader)
         group = WalTransferGroup(uploader)
         group.start(segment)
 
