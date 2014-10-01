@@ -90,9 +90,9 @@ class WalDualUploader(object):
             logger.error(msg=error_msg)
 
         # will make the segment to be done only when both of the uploads succeed.
-        segment.explicit = not (success & nfsThread.success)
+        res = success and nfsThread.success
         logger.info(msg='push result {result} for file {wal_path}'.
-                    format(result= not segment.explicit, wal_path=segment.path))
+                    format(result=res, wal_path=segment.path))
 
         if ex is not None:
             raise ex
