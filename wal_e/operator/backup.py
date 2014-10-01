@@ -21,7 +21,8 @@ from wal_e.worker import (WalSegment,
                           TarUploadPool,
                           WalTransferGroup,
                           uri_put_file,
-                          do_lzop_get)
+                          do_lzop_get,
+                          check_wal_backup)
 
 
 # File mode on directories created during restore process
@@ -289,6 +290,20 @@ class Backup(object):
 
         # Wait for uploads to finish.
         group.join()
+
+    def wal_check(self, wal_path):
+        """
+        Check if the wal file is in the blobstore
+        """
+        segment = WalSegment(wal_path)
+        existed = check_wal_backup(self.layout, self.creds, self.gpg_key_id, segment)
+        if existed:
+            logger.info(msg='wal file {filename} exists on blobstore'.format(filename=segment.name))
+            return 0
+        else:
+            logger.error(msg='wal file {filename} does not exist on blobstore'.format(filename=segment.name))
+            return 1
+
 
     def wal_restore(self, wal_name, wal_destination):
         """

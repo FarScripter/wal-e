@@ -10,6 +10,7 @@ from wal_e.worker.worker_util import do_lzop_get
 from wal_e.worker.worker_util import do_lzop_put
 from wal_e.worker.worker_util import uri_put_file
 from wal_e.worker.gluster.gluster_worker import WalGlusterUploader
+from wal_e.worker.check import check_wal_backup
 
 __all__ = [
     'WalDualUploader',
@@ -24,4 +25,5 @@ __all__ = [
     'do_lzop_get',
     'do_lzop_put',
     'uri_put_file',
+    'check_wal_backup',
 ]
