@@ -280,6 +280,11 @@ def build_parser():
         '--pool-size', '-p', type=int, default=8,
         help='Set the maximum number of concurrent transfers')
 
+    # wal-check operator section
+    subparsers.add_parser(
+        'wal-check', help='check a WAL file on s3',
+        parents=[wal_fetchpush_parent])
+
     # backup-fetch operator section
     backup_fetch_parser.add_argument('BACKUP_NAME',
                                      help='the name of the backup to fetch')
@@ -551,6 +556,8 @@ def main():
             external_program_check([LZOP_BIN])
             backup_cxt.wal_archive(args.WAL_SEGMENT,
                                    concurrency=args.pool_size)
+        elif subcommand == 'wal-check':
+            sys.exit(backup_cxt.wal_check(args.WAL_SEGMENT))
         elif subcommand == 'delete':
             # Set up pruning precedence, optimizing for *not* deleting data
             #

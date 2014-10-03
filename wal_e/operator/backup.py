@@ -14,6 +14,7 @@ from wal_e.exception import UserException, UserCritical
 from wal_e.worker import (WalSegment,
                           WalUploader,
                           WalDualUploader,
+                          WalGlusterUploader,
                           PgBackupStatements,
                           PgControlDataParser,
                           PartitionUploader,
@@ -21,7 +22,7 @@ from wal_e.worker import (WalSegment,
                           WalTransferGroup,
                           uri_put_file,
                           do_lzop_get,
-                          gluster_wal_push)
+                          check_wal_backup)
 
 
 # File mode on directories created during restore process
@@ -266,7 +267,9 @@ class Backup(object):
         if (enable_code == 0):
             uploader = WalUploader(self.layout, self.creds, self.gpg_key_id)
         else:
-            uploader = WalDualUploader(self.layout, self.creds, self.gpg_key_id, gluster_wal_push)
+            blobstore_uploader = WalUploader(self.layout, self.creds, self.gpg_key_id)
+            gluster_uploader = WalGlusterUploader()
+            uploader = WalDualUploader(blobstore_uploader, gluster_uploader)
         group = WalTransferGroup(uploader)
         group.start(segment)
 
@@ -287,6 +290,20 @@ class Backup(object):
 
         # Wait for uploads to finish.
         group.join()
+
+    def wal_check(self, wal_path):
+        """
+        Check if the wal file is in the blobstore
+        """
+        segment = WalSegment(wal_path)
+        existed = check_wal_backup(self.layout, self.creds, self.gpg_key_id, segment)
+        if existed:
+            logger.info(msg='wal file {filename} exists on blobstore'.format(filename=segment.name))
+            return 0
+        else:
+            logger.error(msg='wal file {filename} does not exist on blobstore'.format(filename=segment.name))
+            return 1
+
 
     def wal_restore(self, wal_name, wal_destination):
         """

@@ -13,6 +13,15 @@ def uri_put_file(creds, uri, fp, content_encoding=None):
                                   content_encoding=content_encoding)
 
 
+def do_if_exist(creds, url, local_path, gpg_key):
+    """
+    Check if the file exist on s3
+    """
+    assert url.endswith('.lzo')
+    blobstore = get_blobstore(storage.StorageLayout(url))
+    return blobstore.if_uri_exist(creds, url)
+
+
 def do_lzop_put(creds, url, local_path, gpg_key):
     """
     Compress and upload a given local path.

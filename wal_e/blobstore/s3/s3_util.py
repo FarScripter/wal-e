@@ -61,6 +61,18 @@ def uri_get_file(creds, uri, conn=None):
     return k.get_contents_as_string()
 
 
+def if_uri_exist(creds, uri, conn=None):
+    assert uri.startswith('s3://')
+    url_tup = urlparse(uri)
+    bucket_name = url_tup.netloc
+    cinfo = calling_format.from_store_name(bucket_name)
+    if conn is None:
+        conn = cinfo.connect(creds)
+    bucket = boto.s3.bucket.Bucket(connection=conn, name=bucket_name)
+    k = bucket.get_key(url_tup.path)
+    return k is not None
+
+
 def do_lzop_get(creds, url, path, decrypt):
     """
     Get and decompress a S3 URL
