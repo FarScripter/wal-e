@@ -117,7 +117,8 @@ class WalTransferGroup(object):
                 # time.  This is not expected to ever occur except for
                 # bugs and very dire situations, so do not take pains
                 # to convert it into a UserException or anything.
-                gevent.killall(list(self.greenlets), block=True, timeout=60)
+                gevent.joinall(list(self.greenlets), timeout=30)
+                gevent.killall(list(self.greenlets), block=True, timeout=30)
                 raise val
 
     def start(self, segment):
