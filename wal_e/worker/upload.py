@@ -18,7 +18,7 @@ from wal_e.worker.worker_util import do_lzop_put, format_kib_per_second
 
 logger = log_help.WalELogger(__name__)
 
-NFS_TIMEOUT_SECS = 15
+NFS_TIMEOUT_SECS = 30
 
 class WalUploader(object):
     def __init__(self, layout, creds, gpg_key_id):
