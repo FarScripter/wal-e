@@ -18,6 +18,7 @@ from wal_e.worker.worker_util import do_lzop_put, format_kib_per_second
 
 logger = log_help.WalELogger(__name__)
 
+NFS_TIMEOUT_SECS = 15
 
 class WalUploader(object):
     def __init__(self, layout, creds, gpg_key_id):
@@ -82,12 +83,15 @@ class WalDualUploader(object):
                          .format(wal_path=segment.path))
 
         # wait for the gluster thread
-        nfsThread.join()
+        nfsThread.join(NFS_TIMEOUT_SECS)
         if nfsThread.success is False:
             error_msg = 'failed to upload {wal_path} to gluster'.format(wal_path=segment.path)
             if ex is None:
                 ex = Exception(error_msg)
             logger.error(msg=error_msg)
+
+        if nfsThread.isAlive():
+            nfsThread.stop()
 
         # will make the segment to be done only when both of the uploads succeed.
         res = success and nfsThread.success
@@ -106,12 +110,16 @@ class WalNfsThread(threading.Thread):
         threading.Thread.__init__(self)
         self.segment = segment
         self.push_function = push_function
+        self._stop = threading.Event()
 
     def run(self):
         return_code = self.push_function(self.segment)
         # what should we do if the file exists?
         if return_code == 0 or return_code == errno.EEXIST:
             self.success = True
+
+    def stop(self):
+        self._stop.set()
 
 
 class PartitionUploader(object):
