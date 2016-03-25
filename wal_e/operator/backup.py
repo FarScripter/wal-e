@@ -262,14 +262,10 @@ class Backup(object):
         xlog_dir = os.path.dirname(wal_path)
         segment = WalSegment(wal_path, explicit=True)
 
-        enable_code = os.getenv("GLUSTER_ENABLE")
-        uploader = None
-        if (enable_code == 0):
-            uploader = WalUploader(self.layout, self.creds, self.gpg_key_id)
-        else:
-            blobstore_uploader = WalUploader(self.layout, self.creds, self.gpg_key_id)
-            gluster_uploader = WalGlusterUploader()
-            uploader = WalDualUploader(blobstore_uploader, gluster_uploader)
+        blobstore_uploader = WalUploader(self.layout, self.creds, self.gpg_key_id)
+        gluster_uploader = WalGlusterUploader()
+        uploader = WalDualUploader(blobstore_uploader, gluster_uploader)
+
         group = WalTransferGroup(uploader)
         group.start(segment)
 

@@ -4,6 +4,7 @@ import time
 import threading
 import subprocess
 import errno
+import os
 
 import boto.exception
 
@@ -74,13 +75,18 @@ class WalDualUploader(object):
 
         success = False
         ex = None
-        try:
-            self.blobstore_uploader.upload_to_blobstore(segment)
+
+        s3_enable_code = int(os.getenv("S3_ENABLE_WAL", 0))
+        if (s3_enable_code == 1):
+            try:
+                self.blobstore_uploader.upload_to_blobstore(segment)
+                success = True
+            except Exception as e:
+                ex = e
+                logger.error(msg='failed to upload {wal_path} to blobstore'
+                             .format(wal_path=segment.path))
+        else:
             success = True
-        except Exception as e:
-            ex = e
-            logger.error(msg='failed to upload {wal_path} to blobstore'
-                         .format(wal_path=segment.path))
 
         # wait for the gluster thread
         nfsThread.join(NFS_TIMEOUT_SECS)
